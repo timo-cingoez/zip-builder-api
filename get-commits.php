@@ -5,42 +5,65 @@ header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header('Content-Type: application/json');
 
-if (empty($_GET['git_executable_path']) || empty($_GET['repository_path'])) {
-    echo json_encode(['error' => 'Missing git_executable_path or repository_path']);
-    exit;
-}
-
-define('REPOSITORY_PATH', $_GET['repository_path'].'/.git');
-define('GIT_EXECUTABLE_PATH', '"'.$_GET['git_executable_path'].'"');
 const DEBUG = false;
 
-$args = [
-    $_GET['since'] ?: null,
-    $_GET['until'] ?: null,
-    $_GET['author'] ?: null,
-    $_GET['grep'] ?: null
-];
+switch (true) {
+    case empty($_GET['git_executable_path']):
+        echo json_encode(['error' => 'Missing git_executable_path']);
+        exit;
+    
+    case empty($_GET['repository_path']):
+        echo json_encode(['error' => 'Missing repository_path']);
+        exit;
+    
+    case empty($_GET['action']):
+        echo json_encode(['error' => 'Missing action']);
+        exit;
+    
+    default:
+        define('REPOSITORY_PATH', $_GET['repository_path'].'/.git');
+        define('GIT_EXECUTABLE_PATH', '"'.$_GET['git_executable_path'].'"');
+        $action = $_GET['action'];
+        break;
+}
 
-$commits = get_commits(...$args);
-
-$filePath = 'temp'.DIRECTORY_SEPARATOR.'commits_'.time().'.json';
-
-$fp = fopen($filePath, 'w');
-fwrite($fp, json_encode(['commits' => $commits], JSON_PRETTY_PRINT));
-fclose($fp);
-
-if (file_exists($filePath)) {
-    $jsonContent = file_get_contents($filePath);
-    $data = json_decode($jsonContent, true);
-    if ($data !== null) {
-        echo json_encode($data);
-    } else {
-        http_response_code(500);
-        echo json_encode(['error' => 'Error decoding JSON']);
-    }
-} else {
-    http_response_code(404);
-    echo json_encode(['error' => 'File not found']);
+switch (strtoupper($action)) {
+    case 'COMMITS':
+        $args = [
+            $_GET['since'] ?: null,
+            $_GET['until'] ?: null,
+            $_GET['author'] ?: null,
+            $_GET['grep'] ?: null
+        ];
+        
+        $commits = get_commits(...$args);
+        
+        $filePath = 'temp'.DIRECTORY_SEPARATOR.'commits_'.time().'.json';
+        
+        $fp = fopen($filePath, 'w');
+        fwrite($fp, json_encode(['commits' => $commits], JSON_PRETTY_PRINT));
+        fclose($fp);
+        
+        if (file_exists($filePath)) {
+            $jsonContent = file_get_contents($filePath);
+            $data = json_decode($jsonContent, true);
+            if ($data !== null) {
+                echo json_encode($data);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error decoding JSON']);
+            }
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'File not found']);
+        }
+        
+        exit;
+    
+    case 'AUTHORS':
+        $authors = get_commit_authors();
+        echo json_encode($authors);
+        exit;
 }
 
 function get_commits($since, $until, $author, $grep): array {
@@ -56,7 +79,7 @@ function get_commits($since, $until, $author, $grep): array {
     ];
     $out = execute_git_command($argList);
     
-    if (is_null($out)) {
+    if (empty($out)) {
         return [];
     }
     
@@ -105,26 +128,40 @@ function get_parent_commit_sha($sha): string {
         'rev-parse',
         $sha.'^'
     ];
-    $out = execute_git_command($argList);
-    return is_null($out) ? '' : $out;
+    return execute_git_command($argList);
 }
 
-function get_commit_authors() {
+function get_commit_authors(): array {
     $argList = [
         '--git-dir='.REPOSITORY_PATH,
-        '--format="%aN <%aE>"',
-        '| sort -u'
+        'log',
+        '--pretty="%aN <%aE>"',
+        '2>&1'
     ];
     $out = execute_git_command($argList);
-    return is_null($out) ? '' : $out;
+    
+    if (empty($out)) {
+        return [];
+    }
+    
+    $authorList = explode("\n", $out);
+    
+    $authors = [];
+    foreach ($authorList as $author) {
+        if (!in_array($author, $authors) && !empty($author)) {
+            $authors[] = $author;
+        }
+    }
+    
+    return $authors;
 }
 
-function execute_git_command(array $argList) {
+function execute_git_command(array $argList): string {
     $args = implode(' ', $argList);
     $command = GIT_EXECUTABLE_PATH.' '.$args;
     $out = shell_exec($command);
     print_command($command, $out);
-    return $out;
+    return is_null($out) ? '' : $out;
 }
 
 function print_command($command, $out): void {
