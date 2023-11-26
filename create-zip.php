@@ -7,23 +7,17 @@ header('Content-Type: application/json');
 
 $jsonData = file_get_contents("php://input");
 $data = json_decode($jsonData, true);
-debug('$data', $data);
 
 if ($data['action'] === 'BUILD_ZIP' && $data['rootDir']) {
     $dirPath = 'temp'.DIRECTORY_SEPARATOR.'zip_builder_dir_'.time();
     mkdir($dirPath, 777);
     
     $absolutePathPrefix = normalize_path($data['rootDir']).DIRECTORY_SEPARATOR;
-    debug('absolute path prefix', $absolutePathPrefix);
-    
-    debug('files', $data['files']);
     
     foreach ($data['files'] as $filePath) {
         $absoluteFilePath = normalize_path($absolutePathPrefix.$filePath);
-        debug('absolute path of file', $absoluteFilePath);
         
         $zipFilePath = $dirPath.DIRECTORY_SEPARATOR.str_replace($absolutePathPrefix, '', $absoluteFilePath);
-        debug('path of file in zip', $zipFilePath);
         
         if (!is_dir(dirname($zipFilePath))) {
             mkdir(dirname($zipFilePath), 777, true);

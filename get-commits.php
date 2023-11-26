@@ -5,6 +5,11 @@ header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header('Content-Type: application/json');
 
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 const DEBUG = false;
 
 switch (true) {
@@ -39,6 +44,10 @@ switch (strtoupper($action)) {
         $commits = get_commits(...$args);
         
         $filePath = 'temp'.DIRECTORY_SEPARATOR.'commits_'.time().'.json';
+        
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 777, true);
+        }
         
         $fp = fopen($filePath, 'w');
         fwrite($fp, json_encode(['commits' => $commits], JSON_PRETTY_PRINT));
