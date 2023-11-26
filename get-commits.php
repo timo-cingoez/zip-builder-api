@@ -144,8 +144,7 @@ function get_commit_authors(): array {
     $argList = [
         '--git-dir='.REPOSITORY_PATH,
         'log',
-        '--pretty="%aN <%aE>"',
-        '2>&1'
+        '--pretty="%aN <%aE>"'
     ];
     $out = execute_git_command($argList);
     
