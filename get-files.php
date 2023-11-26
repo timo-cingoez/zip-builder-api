@@ -1,40 +1,27 @@
 <?php
 
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header('Content-Type: application/json');
 
-$excludedDirs = [
-    'DEBUG',
-    'dokumente',
-    'bilder',
-    'images',
-    'emoticons',
-    'log',
-    'dokumente_korrespondenz',
-    'img',
-    'Serienbriefe',
-    'export',
-    'temp',
-    'bdc posteingang',
-    '.git',
-    '.idea',
-    '.github',
-    '.tmb',
-    'mailbox_emails',
-    'stil',
-    'faq',
-    'sensus',
-    '.gitignore',
-    'log.txt',
-    'vendor',
-    'leads',
-    '2.0',
-    'boersen',
-    'archive',
-    'lds'
-];
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+if (empty($_GET['repository_path'])) {
+    http_response_code(400);
+    echo json_encode(["error" => "Missing required parameter: 'repository_path'"]);
+    exit;
+}
+
+$data = json_decode(file_get_contents("php://input"), true);
+
+$excludedDirs = [];
+if ($data['exclude_dirs']) {
+    $excludedDirs = $data['exclude_dirs'];
+}
 
 $basePath = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $_GET['repository_path']);
 
@@ -124,4 +111,17 @@ function format_size_units($bytes): string {
         $bytes = '0 bytes';
     }
     return $bytes;
+}
+
+function debug($text = '', $variable = '', $file = 'debug.txt') {
+    try {
+        $dateTime = new DateTimeImmutable();
+        $handle = fopen($file, 'ab+');
+        fwrite($handle, $dateTime->format('d.m.Y H:i:s.u')." $text ".print_r($variable, true)."\n");
+        fclose($handle);
+    } catch (Exception $e) {
+        $handle = fopen($file, 'ab+');
+        fwrite($handle, date('d.m.Y H:i:s.u')." $text ".print_r($variable, true)."\n");
+        fclose($handle);
+    }
 }
