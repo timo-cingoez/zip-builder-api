@@ -31,11 +31,12 @@ $data = ['files' => []];
 foreach ($filePaths as $filePath) {
     $normalizedPath = str_replace('\\', '/', $filePath);
     $pathInfo = pathinfo($normalizedPath);
+    $extension = array_key_exists('extension', $pathInfo) ? $pathInfo['extension'] : '';
     $data['files'][] = [
         'path' => $normalizedPath,
-        'size' => format_size_units(filesize($basePath.DIRECTORY_SEPARATOR.$filePath)),
-        'extension' => $pathInfo['extension'],
-        'lastChange' => date('d.m.Y H:i:s', filemtime($basePath.DIRECTORY_SEPARATOR.$filePath))
+        'size' => format_size_units(filesize($basePath . DIRECTORY_SEPARATOR . $filePath)),
+        'extension' => $extension,
+        'lastChange' => date('d.m.Y H:i:s', filemtime($basePath . DIRECTORY_SEPARATOR . $filePath))
     ];
 }
 
@@ -48,41 +49,43 @@ echo json_encode($data);
  * @param array $excludedDirs
  * @return array
  */
-function get_all_file_paths(string $dir, string $basePath, array $excludedDirs): array {
+function get_all_file_paths(string $dir, string $basePath, array $excludedDirs): array
+{
     $dirIterator = new DirectoryIterator($dir);
     $filePaths = array();
-    
+
     foreach ($dirIterator as $fileInfo) {
         $fileName = $fileInfo->getFilename();
         $pathName = $fileInfo->getPathname();
         $isDir = $fileInfo->isDir();
-        
+
         if (
             $fileInfo->isDot() ||
             is_excluded_dir($pathName, $excludedDirs)
         ) {
             continue;
         }
-        
+
         if (
             (strpos($fileName, 'lang_') !== false && strlen($fileName) > 30) ||
             $fileInfo->getExtension() === 'txt'
         ) {
             continue;
         }
-        
+
         if ($isDir) {
-            $filePaths = array_merge($filePaths, get_all_file_paths($dir.DIRECTORY_SEPARATOR.$fileName, $basePath, $excludedDirs));
+            $filePaths = array_merge($filePaths, get_all_file_paths($dir . DIRECTORY_SEPARATOR . $fileName, $basePath, $excludedDirs));
         } else {
             $filePath = ltrim(str_replace(__DIR__, '', $pathName), DIRECTORY_SEPARATOR);
-            $filePaths[] = str_replace($basePath.DIRECTORY_SEPARATOR, '', $filePath);
+            $filePaths[] = str_replace($basePath . DIRECTORY_SEPARATOR, '', $filePath);
         }
     }
-    
+
     return $filePaths;
 }
 
-function is_excluded_dir($path, $excludedDirs): bool {
+function is_excluded_dir($path, $excludedDirs): bool
+{
     if (strpos($path, DIRECTORY_SEPARATOR) !== false) {
         $_ = explode(DIRECTORY_SEPARATOR, $path);
         foreach ($_ as $dir) {
@@ -96,32 +99,34 @@ function is_excluded_dir($path, $excludedDirs): bool {
     return false;
 }
 
-function format_size_units($bytes): string {
+function format_size_units($bytes): string
+{
     if ($bytes >= 1073741824) {
-        $bytes = number_format($bytes / 1073741824, 2).' GB';
+        $bytes = number_format($bytes / 1073741824, 2) . ' GB';
     } elseif ($bytes >= 1048576) {
-        $bytes = number_format($bytes / 1048576, 2).' MB';
+        $bytes = number_format($bytes / 1048576, 2) . ' MB';
     } elseif ($bytes >= 1024) {
-        $bytes = number_format($bytes / 1024, 2).' KB';
+        $bytes = number_format($bytes / 1024, 2) . ' KB';
     } elseif ($bytes > 1) {
-        $bytes = $bytes.' bytes';
+        $bytes = $bytes . ' bytes';
     } elseif ($bytes == 1) {
-        $bytes = $bytes.' byte';
+        $bytes = $bytes . ' byte';
     } else {
         $bytes = '0 bytes';
     }
     return $bytes;
 }
 
-function debug($text = '', $variable = '', $file = 'debug.txt') {
+function debug($text = '', $variable = '', $file = 'debug.txt')
+{
     try {
         $dateTime = new DateTimeImmutable();
         $handle = fopen($file, 'ab+');
-        fwrite($handle, $dateTime->format('d.m.Y H:i:s.u')." $text ".print_r($variable, true)."\n");
+        fwrite($handle, $dateTime->format('d.m.Y H:i:s.u') . " $text " . print_r($variable, true) . "\n");
         fclose($handle);
     } catch (Exception $e) {
         $handle = fopen($file, 'ab+');
-        fwrite($handle, date('d.m.Y H:i:s.u')." $text ".print_r($variable, true)."\n");
+        fwrite($handle, date('d.m.Y H:i:s.u') . " $text " . print_r($variable, true) . "\n");
         fclose($handle);
     }
 }

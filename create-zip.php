@@ -9,35 +9,37 @@ $jsonData = file_get_contents("php://input");
 $data = json_decode($jsonData, true);
 
 if ($data['action'] === 'BUILD_ZIP' && $data['rootDir']) {
-    $dirPath = 'temp'.DIRECTORY_SEPARATOR.'zip_builder_dir_'.time();
+    $dirPath = 'temp' . DIRECTORY_SEPARATOR . 'zip_builder_dir_' . time();
     mkdir($dirPath, 777);
-    
-    $absolutePathPrefix = normalize_path($data['rootDir']).DIRECTORY_SEPARATOR;
-    
+
+    $absolutePathPrefix = normalize_path($data['rootDir']) . DIRECTORY_SEPARATOR;
+
     foreach ($data['files'] as $filePath) {
-        $absoluteFilePath = normalize_path($absolutePathPrefix.$filePath);
-        
-        $zipFilePath = $dirPath.DIRECTORY_SEPARATOR.str_replace($absolutePathPrefix, '', $absoluteFilePath);
-        
+        $absoluteFilePath = normalize_path($absolutePathPrefix . $filePath);
+
+        $zipFilePath = $dirPath . DIRECTORY_SEPARATOR . str_replace($absolutePathPrefix, '', $absoluteFilePath);
+
         if (!is_dir(dirname($zipFilePath))) {
             mkdir(dirname($zipFilePath), 777, true);
         }
-        
+
         copy($absoluteFilePath, $zipFilePath);
     }
-    
-    $zipArchivePath = 'temp/zip_builder_'.time().'.zip';
-    $zipArchivePath = 'C:/Dev/zip-builder/src/temp/zip_builder_'.time().'.zip';
-    unlink($zipArchivePath);
+
+    $zipArchivePath = 'temp/zip_builder_' . time() . '.zip';
+    $zipArchivePath = 'C:/Dev/zip-builder/src/temp/zip_builder_' . time() . '.zip';
+    if (file_exists($zipArchivePath)) {
+        unlink($zipArchivePath);
+    }
     $zipSuccess = zip($dirPath, $zipArchivePath);
-    
+
     $status = $zipSuccess ? 'success' : 'error';
-    
+
     $absoluteDirPath = realpath($dirPath);
     $dirSize = round(dir_size($absoluteDirPath) / 1024, 2);
     $absoluteZipPath = realpath($zipArchivePath);
     $zipArchiveSize = round(filesize($absoluteZipPath) / 1024, 2);
-    
+
     echo json_encode(
         array(
             'status' => $status,
@@ -51,19 +53,20 @@ if ($data['action'] === 'BUILD_ZIP' && $data['rootDir']) {
             )
         )
     );
-    
+
     exit;
 }
 
-function debug($text = '', $variable = '', $file = 'debug.txt') {
+function debug($text = '', $variable = '', $file = 'debug.txt')
+{
     try {
         $dateTime = new DateTimeImmutable();
         $handle = fopen($file, 'ab+');
-        fwrite($handle, $dateTime->format('d.m.Y H:i:s.u')." $text ".print_r($variable, true)."\n");
+        fwrite($handle, $dateTime->format('d.m.Y H:i:s.u') . " $text " . print_r($variable, true) . "\n");
         fclose($handle);
     } catch (Exception $e) {
         $handle = fopen($file, 'ab+');
-        fwrite($handle, date('d.m.Y H:i:s.u')." $text ".print_r($variable, true)."\n");
+        fwrite($handle, date('d.m.Y H:i:s.u') . " $text " . print_r($variable, true) . "\n");
         fclose($handle);
     }
 }
@@ -74,7 +77,8 @@ function debug($text = '', $variable = '', $file = 'debug.txt') {
  * @param $destination
  * @return bool
  */
-function zip($source, $destination) {
+function zip($source, $destination)
+{
     if (!extension_loaded('zip') || !file_exists($source)) {
         return false;
     }
@@ -106,14 +110,16 @@ function zip($source, $destination) {
  * @param $dir
  * @return int
  */
-function dir_size($dir) {
+function dir_size($dir)
+{
     $size = 0;
-    foreach (glob(rtrim($dir, '/').'/*', GLOB_NOSORT) as $each) {
+    foreach (glob(rtrim($dir, '/') . '/*', GLOB_NOSORT) as $each) {
         $size += is_file($each) ? filesize($each) : dir_size($each);
     }
     return $size;
 }
 
-function normalize_path($path) {
+function normalize_path($path)
+{
     return str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
 }
